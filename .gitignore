@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+frontend/node_modules/
+frontend/dist/
+backend/data/sessions.json
+.DS_Store
+*.env
+.DS_Store
+**/.DS_Store

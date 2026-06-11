@@ -1,0 +1,54 @@
+{
+  "id": "ACM-1-1",
+  "name": "ACM-1-1",
+  "description": "Meccanismo di controllo degli accessi alle funzionalità del dispositivo",
+  "standard": "EN 18031-1",
+  "root": "DT.ACM-1-1.ROOT",
+  "nodes": {
+    "DT.ACM-1-1.ROOT": {
+      "id": "DT.ACM-1-1.ROOT",
+      "type": "question",
+      "text": "Il dispositivo implementa un meccanismo di controllo degli accessi per le sue funzionalità?",
+      "yes": "DT.ACM-1-1.DN-1",
+      "no": "DT.ACM-1-1.FAIL-1"
+    },
+    "DT.ACM-1-1.DN-1": {
+      "id": "DT.ACM-1-1.DN-1",
+      "type": "question",
+      "text": "Il controllo accessi distingue tra ruoli diversi (es. utente, amministratore)?",
+      "yes": "DT.ACM-1-1.DN-2",
+      "no": "DT.ACM-1-1.FAIL-2"
+    },
+    "DT.ACM-1-1.DN-2": {
+      "id": "DT.ACM-1-1.DN-2",
+      "type": "question",
+      "text": "I permessi di accesso seguono il principio del minimo privilegio?",
+      "yes": "DT.ACM-1-1.PASS-1",
+      "no": "DT.ACM-1-1.FAIL-3"
+    },
+    "DT.ACM-1-1.PASS-1": {
+      "id": "DT.ACM-1-1.PASS-1",
+      "type": "leaf",
+      "outcome": "PASS",
+      "text": "Il meccanismo di controllo accessi è correttamente implementato con separazione dei ruoli e principio del minimo privilegio."
+    },
+    "DT.ACM-1-1.FAIL-1": {
+      "id": "DT.ACM-1-1.FAIL-1",
+      "type": "leaf",
+      "outcome": "FAIL",
+      "text": "Il dispositivo non implementa alcun meccanismo di controllo degli accessi."
+    },
+    "DT.ACM-1-1.FAIL-2": {
+      "id": "DT.ACM-1-1.FAIL-2",
+      "type": "leaf",
+      "outcome": "FAIL",
+      "text": "Il controllo accessi non distingue tra ruoli: tutti gli utenti hanno gli stessi permessi."
+    },
+    "DT.ACM-1-1.FAIL-3": {
+      "id": "DT.ACM-1-1.FAIL-3",
+      "type": "leaf",
+      "outcome": "FAIL",
+      "text": "I permessi non rispettano il principio del minimo privilegio: rischio di accesso eccessivo."
+    }
+  }
+}
