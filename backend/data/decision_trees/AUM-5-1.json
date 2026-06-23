@@ -1,35 +1,35 @@
 {
   "id": "AUM-5-1",
   "name": "AUM-5-1",
-  "description": "Gestione delle password di fabbrica predefinite",
+  "description": "Management of factory default passwords",
   "standard": "EN 18031-1",
   "root": "DT.AUM-5-1.ROOT",
   "nodes": {
     "DT.AUM-5-1.ROOT": {
       "id": "DT.AUM-5-1.ROOT",
       "type": "question",
-      "text": "Il meccanismo di autenticazione richiesto da AUM-1-1 o AUM-1-2 utilizza password predefinite di fabbrica?",
+      "text": "Does the authentication mechanism required by AUM-1-1 or AUM-1-2 use factory default passwords?",
       "yes": "DT.AUM-5-1.DN-1",
       "no": "DT.AUM-5-1.NA"
     },
     "DT.AUM-5-1.DN-1": {
       "id": "DT.AUM-5-1.DN-1",
       "type": "question",
-      "text": "È obbligatorio per l'utente cambiare la password prima o al primo utilizzo?",
+      "text": "Is the user required to change the password before or at first use?",
       "yes": "DT.AUM-5-1.PASS-1",
       "no": "DT.AUM-5-1.DN-2"
     },
     "DT.AUM-5-1.DN-2": {
       "id": "DT.AUM-5-1.DN-2",
       "type": "question",
-      "text": "La password è unica per ogni singolo dispositivo?",
+      "text": "Is the password unique to each individual device?",
       "yes": "DT.AUM-5-1.DN-3",
       "no": "DT.AUM-5-1.FAIL-1"
     },
     "DT.AUM-5-1.DN-3": {
       "id": "DT.AUM-5-1.DN-3",
       "type": "question",
-      "text": "La password rispetta le best practice sulla robustezza (lunghezza minima, complessità)?",
+      "text": "Does the password meet best practice strength requirements (minimum length, complexity)?",
       "yes": "DT.AUM-5-1.PASS-2",
       "no": "DT.AUM-5-1.FAIL-2"
     },
@@ -37,31 +37,31 @@
       "id": "DT.AUM-5-1.PASS-1",
       "type": "leaf",
       "outcome": "PASS",
-      "text": "Il dispositivo impone il cambio password al primo utilizzo."
+      "text": "The device enforces a password change at first use."
     },
     "DT.AUM-5-1.PASS-2": {
       "id": "DT.AUM-5-1.PASS-2",
       "type": "leaf",
       "outcome": "PASS",
-      "text": "La password è unica per dispositivo e rispetta i criteri di robustezza."
+      "text": "The password is unique per device and meets strength criteria."
     },
     "DT.AUM-5-1.FAIL-1": {
       "id": "DT.AUM-5-1.FAIL-1",
       "type": "leaf",
       "outcome": "FAIL",
-      "text": "La password non è unica per dispositivo: rischio di accesso non autorizzato."
+      "text": "The password is not unique per device: risk of unauthorized access."
     },
     "DT.AUM-5-1.FAIL-2": {
       "id": "DT.AUM-5-1.FAIL-2",
       "type": "leaf",
       "outcome": "FAIL",
-      "text": "La password non rispetta i criteri di robustezza richiesti dallo standard."
+      "text": "The password does not meet the strength criteria required by the standard."
     },
     "DT.AUM-5-1.NA": {
       "id": "DT.AUM-5-1.NA",
       "type": "leaf",
       "outcome": "NOT_APPLICABLE",
-      "text": "Il requisito AUM-5-1 non è applicabile a questo asset."
+      "text": "Requirement AUM-5-1 is not applicable to this asset."
     }
   }
 }

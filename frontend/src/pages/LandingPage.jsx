@@ -59,7 +59,7 @@ export default function LandingPage({ onDeviceLoaded, onSessionResumed }) {
       </div>
 
       <p style={{ color: '#8b949e', fontSize: '12px' }}>
-        Example: <code>backend/data/device_esempio.json</code>
+        Example: <code>backend/data/device_example.json</code>
       </p>
 
       <hr />

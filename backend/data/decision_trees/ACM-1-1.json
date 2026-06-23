@@ -1,28 +1,28 @@
 {
   "id": "ACM-1-1",
   "name": "ACM-1-1",
-  "description": "Meccanismo di controllo degli accessi alle funzionalità del dispositivo",
+  "description": "Access control mechanism for device functionalities",
   "standard": "EN 18031-1",
   "root": "DT.ACM-1-1.ROOT",
   "nodes": {
     "DT.ACM-1-1.ROOT": {
       "id": "DT.ACM-1-1.ROOT",
       "type": "question",
-      "text": "Il dispositivo implementa un meccanismo di controllo degli accessi per le sue funzionalità?",
+      "text": "Does the device implement an access control mechanism for its functionalities?",
       "yes": "DT.ACM-1-1.DN-1",
       "no": "DT.ACM-1-1.FAIL-1"
     },
     "DT.ACM-1-1.DN-1": {
       "id": "DT.ACM-1-1.DN-1",
       "type": "question",
-      "text": "Il controllo accessi distingue tra ruoli diversi (es. utente, amministratore)?",
+      "text": "Does the access control distinguish between different roles (e.g. user, administrator)?",
       "yes": "DT.ACM-1-1.DN-2",
       "no": "DT.ACM-1-1.FAIL-2"
     },
     "DT.ACM-1-1.DN-2": {
       "id": "DT.ACM-1-1.DN-2",
       "type": "question",
-      "text": "I permessi di accesso seguono il principio del minimo privilegio?",
+      "text": "Do the access permissions follow the principle of least privilege?",
       "yes": "DT.ACM-1-1.PASS-1",
       "no": "DT.ACM-1-1.FAIL-3"
     },
@@ -30,25 +30,25 @@
       "id": "DT.ACM-1-1.PASS-1",
       "type": "leaf",
       "outcome": "PASS",
-      "text": "Il meccanismo di controllo accessi è correttamente implementato con separazione dei ruoli e principio del minimo privilegio."
+      "text": "The access control mechanism is correctly implemented with role separation and the principle of least privilege."
     },
     "DT.ACM-1-1.FAIL-1": {
       "id": "DT.ACM-1-1.FAIL-1",
       "type": "leaf",
       "outcome": "FAIL",
-      "text": "Il dispositivo non implementa alcun meccanismo di controllo degli accessi."
+      "text": "The device does not implement any access control mechanism."
     },
     "DT.ACM-1-1.FAIL-2": {
       "id": "DT.ACM-1-1.FAIL-2",
       "type": "leaf",
       "outcome": "FAIL",
-      "text": "Il controllo accessi non distingue tra ruoli: tutti gli utenti hanno gli stessi permessi."
+      "text": "The access control does not distinguish between roles: all users have the same permissions."
     },
     "DT.ACM-1-1.FAIL-3": {
       "id": "DT.ACM-1-1.FAIL-3",
       "type": "leaf",
       "outcome": "FAIL",
-      "text": "I permessi non rispettano il principio del minimo privilegio: rischio di accesso eccessivo."
+      "text": "Permissions do not follow the principle of least privilege: risk of excessive access."
     }
   }
 }
