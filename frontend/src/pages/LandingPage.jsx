@@ -4,151 +4,85 @@ export default function LandingPage({ onDeviceLoaded, onSessionResumed }) {
   const [error, setError]       = useState('')
   const [loading, setLoading]   = useState(false)
   const [sessions, setSessions] = useState(null)
-  const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef()
 
   async function handleFile(file) {
     if (!file) return
-    if (!file.name.endsWith('.json')) {
-      setError('Formato non valido. Carica un file .json')
-      return
-    }
-
+    if (!file.name.endsWith('.json')) { setError('Invalid format. Upload a .json file'); return }
     setError('')
     setLoading(true)
-
     try {
-      const text = await file.text()
-      const json = JSON.parse(text)
-
-      const res = await fetch('/api/session/load', {
+      const json = JSON.parse(await file.text())
+      const res  = await fetch('/api/session/load', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(json),
       })
-
       const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error || 'Errore durante il caricamento')
-        return
-      }
-
+      if (!res.ok) { setError(data.error || 'Load error'); return }
       onDeviceLoaded(data.device)
     } catch (e) {
-      if (e instanceof SyntaxError) {
-        setError('Il file non è un JSON valido.')
-      } else {
-        setError('Impossibile connettersi al backend. Assicurati che Flask sia avviato.')
-      }
+      setError(e instanceof SyntaxError ? 'Invalid JSON.' : 'Backend unreachable.')
     } finally {
       setLoading(false)
     }
-  }
-
-  function onInputChange(e) {
-    handleFile(e.target.files[0])
-    e.target.value = ''
-  }
-
-  function onDrop(e) {
-    e.preventDefault()
-    setDragOver(false)
-    handleFile(e.dataTransfer.files[0])
   }
 
   async function loadSessions() {
     if (sessions !== null) { setSessions(null); return }
     try {
       const res = await fetch('/api/sessions')
-      const data = await res.json()
-      setSessions(data)
+      setSessions(await res.json())
     } catch {
-      setError('Impossibile caricare le sessioni salvate.')
+      setError('Unable to load sessions.')
     }
   }
 
   return (
-    <main className="page">
-      <h1 className="page-title">Verifica Conformità EN 18031</h1>
-      <p className="page-subtitle">
-        Carica il file di configurazione di un dispositivo per avviare la valutazione di conformità.
+    <div>
+      <h1>EN 18031 Compliance Check</h1>
+      <p className="info">Upload the device JSON file to start the evaluation.</p>
+
+      {error && <p className="error">⚠ {error}</p>}
+
+      <div style={{ margin: '1rem 0' }}>
+        <label>
+          Device file (.json):{' '}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={e => { handleFile(e.target.files[0]); e.target.value = '' }}
+          />
+        </label>
+        {loading && <p className="info">Loading...</p>}
+      </div>
+
+      <p style={{ color: '#8b949e', fontSize: '12px' }}>
+        Example: <code>backend/data/device_esempio.json</code>
       </p>
 
-      {error && <div className="error-msg">⚠ {error}</div>}
+      <hr />
 
-      <div className="card">
-        <div className="card-title">Carica dispositivo</div>
-        <div
-          className={`upload-area${dragOver ? ' drag-over' : ''}`}
-          onClick={() => fileInputRef.current.click()}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={onDrop}
-        >
-          <div className="upload-icon">📂</div>
-          <p><strong>Clicca per selezionare</strong> o trascina qui il file</p>
-          <p style={{ marginTop: '.4rem', fontSize: '.8rem' }}>Solo file .json</p>
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".json"
-          style={{ display: 'none' }}
-          onChange={onInputChange}
-        />
+      <button onClick={loadSessions}>
+        {sessions === null ? 'Show saved sessions' : 'Hide sessions'}
+      </button>
 
-        {loading && (
-          <p className="text-muted mt-2" style={{ textAlign: 'center' }}>
-            Caricamento in corso...
-          </p>
-        )}
-
-        <hr className="divider" />
-
-        <p className="text-muted" style={{ fontSize: '.8rem' }}>
-          <strong style={{ color: 'var(--text-primary)' }}>Non hai un file?</strong>{' '}
-          Usa il file di esempio incluso nel repository:{' '}
-          <code style={{ background: 'var(--bg-elevated)', padding: '.1rem .4rem', borderRadius: '4px' }}>
-            backend/data/device_esempio.json
-          </code>
-        </p>
-      </div>
-
-      <div className="card mt-2">
-        <div className="flex-between">
-          <div className="card-title" style={{ marginBottom: 0 }}>Sessioni salvate</div>
-          <button className="btn btn-ghost" onClick={loadSessions} style={{ fontSize: '.8rem' }}>
-            {sessions === null ? 'Mostra ▾' : 'Nascondi ▴'}
-          </button>
-        </div>
-
-        {sessions !== null && (
-          <div className="mt-2">
-            {sessions.length === 0 ? (
-              <p className="text-muted">Nessuna sessione salvata.</p>
-            ) : (
-              <div className="session-list">
-                {sessions.map((s) => (
-                  <div
-                    key={s.session_id}
-                    className="session-item"
-                    onClick={() => onSessionResumed(s)}
-                  >
-                    <div className="session-info">
-                      <span className="session-name">{s.device?.name || 'Dispositivo'}</span>
-                      <span className="session-meta">
-                        {s.saved_at?.slice(0, 16).replace('T', ' ')} — {s.results?.length ?? 0} valutazioni
-                      </span>
-                    </div>
-                    <span style={{ color: 'var(--accent)', fontSize: '.85rem' }}>Riprendi →</span>
-                  </div>
-                ))}
+      {sessions !== null && (
+        <div style={{ marginTop: '.75rem' }}>
+          {sessions.length === 0
+            ? <p className="info">No saved sessions.</p>
+            : sessions.map(s => (
+              <div key={s.session_id} style={{ borderBottom: '1px solid #30363d', padding: '.4rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px' }}>
+                  {s.device?.name || 'Device'} — {s.saved_at?.slice(0, 16).replace('T', ' ')} — {s.results?.length ?? 0} evaluations
+                </span>
+                <button onClick={() => onSessionResumed(s)}>Resume</button>
               </div>
-            )}
-          </div>
-        )}
-      </div>
-    </main>
+            ))
+          }
+        </div>
+      )}
+    </div>
   )
 }

@@ -3,21 +3,10 @@ import LandingPage from './pages/LandingPage.jsx'
 import EvaluationPage from './pages/EvaluationPage.jsx'
 import ResultsPage from './pages/ResultsPage.jsx'
 
-function Topbar({ onHome }) {
-  return (
-    <header className="topbar">
-      <button className="topbar-logo" onClick={onHome}>
-        EN<span>18031</span>
-      </button>
-      <span className="topbar-subtitle">Compliance Verification — PoC</span>
-    </header>
-  )
-}
-
 export default function App() {
-  const [page, setPage]       = useState('landing')
-  const [device, setDevice]   = useState(null)
-  const [results, setResults] = useState([])
+  const [page, setPage]           = useState('landing')
+  const [device, setDevice]       = useState(null)
+  const [results, setResults]     = useState([])
   const [sessionId, setSessionId] = useState(null)
 
   function goHome() {
@@ -47,32 +36,21 @@ export default function App() {
   }
 
   return (
-    <>
-      <Topbar onHome={goHome} />
+    <div style={{ maxWidth: 800, margin: '0 auto', padding: '1.5rem' }}>
+      <div style={{ borderBottom: '1px solid #30363d', paddingBottom: '.5rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ color: '#8b949e', fontSize: '13px' }}>EN18031 Compliance PoC</span>
+        {page !== 'landing' && <button onClick={goHome}>home</button>}
+      </div>
 
       {page === 'landing' && (
-        <LandingPage
-          onDeviceLoaded={onDeviceLoaded}
-          onSessionResumed={onSessionResumed}
-        />
+        <LandingPage onDeviceLoaded={onDeviceLoaded} onSessionResumed={onSessionResumed} />
       )}
-
       {page === 'evaluation' && device && (
-        <EvaluationPage
-          device={device}
-          onComplete={onEvaluationComplete}
-          onBack={goHome}
-        />
+        <EvaluationPage device={device} onComplete={onEvaluationComplete} onBack={goHome} />
       )}
-
       {page === 'results' && (
-        <ResultsPage
-          device={device}
-          results={results}
-          sessionId={sessionId}
-          onBack={goHome}
-        />
+        <ResultsPage device={device} results={results} sessionId={sessionId} onBack={goHome} />
       )}
-    </>
+    </div>
   )
 }
