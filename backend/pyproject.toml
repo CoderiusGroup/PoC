@@ -9,5 +9,5 @@ description = "PoC - Automated EN18031 Compliance Verification"
 requires-python = ">=3.10"
 dependencies = [
     "flask>=3.0",
-    "flask-cors>=4.0",
+    "reportlab>=4.0",
 ]

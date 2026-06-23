@@ -1,10 +1,8 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 
-export default function LandingPage({ onDeviceLoaded, onSessionResumed }) {
-  const [error, setError]       = useState('')
-  const [loading, setLoading]   = useState(false)
-  const [sessions, setSessions] = useState(null)
-  const fileInputRef = useRef()
+export default function LandingPage({ onDeviceLoaded }) {
+  const [error, setError]     = useState('')
+  const [loading, setLoading] = useState(false)
 
   async function handleFile(file) {
     if (!file) return
@@ -28,16 +26,6 @@ export default function LandingPage({ onDeviceLoaded, onSessionResumed }) {
     }
   }
 
-  async function loadSessions() {
-    if (sessions !== null) { setSessions(null); return }
-    try {
-      const res = await fetch('/api/sessions')
-      setSessions(await res.json())
-    } catch {
-      setError('Unable to load sessions.')
-    }
-  }
-
   return (
     <div>
       <h1>EN 18031 Compliance Check</h1>
@@ -49,7 +37,6 @@ export default function LandingPage({ onDeviceLoaded, onSessionResumed }) {
         <label>
           Device file (.json):{' '}
           <input
-            ref={fileInputRef}
             type="file"
             accept=".json"
             onChange={e => { handleFile(e.target.files[0]); e.target.value = '' }}
@@ -61,28 +48,6 @@ export default function LandingPage({ onDeviceLoaded, onSessionResumed }) {
       <p style={{ color: '#8b949e', fontSize: '12px' }}>
         Example: <code>backend/data/device_example.json</code>
       </p>
-
-      <hr />
-
-      <button onClick={loadSessions}>
-        {sessions === null ? 'Show saved sessions' : 'Hide sessions'}
-      </button>
-
-      {sessions !== null && (
-        <div style={{ marginTop: '.75rem' }}>
-          {sessions.length === 0
-            ? <p className="info">No saved sessions.</p>
-            : sessions.map(s => (
-              <div key={s.session_id} style={{ borderBottom: '1px solid #30363d', padding: '.4rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px' }}>
-                  {s.device?.name || 'Device'} — {s.saved_at?.slice(0, 16).replace('T', ' ')} — {s.results?.length ?? 0} evaluations
-                </span>
-                <button onClick={() => onSessionResumed(s)}>Resume</button>
-              </div>
-            ))
-          }
-        </div>
-      )}
     </div>
   )
 }

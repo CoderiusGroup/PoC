@@ -22,13 +22,6 @@ export default function App() {
     setPage('evaluation')
   }
 
-  function onSessionResumed(session) {
-    setDevice(session.device)
-    setResults(session.results)
-    setSessionId(session.session_id)
-    setPage('results')
-  }
-
   function onEvaluationComplete(evalResults, sid) {
     setResults(evalResults)
     setSessionId(sid)
@@ -43,7 +36,7 @@ export default function App() {
       </div>
 
       {page === 'landing' && (
-        <LandingPage onDeviceLoaded={onDeviceLoaded} onSessionResumed={onSessionResumed} />
+        <LandingPage onDeviceLoaded={onDeviceLoaded} />
       )}
       {page === 'evaluation' && device && (
         <EvaluationPage device={device} onComplete={onEvaluationComplete} onBack={goHome} />

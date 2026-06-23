@@ -1,17 +1,42 @@
+import io
 import json
 import os
 import uuid
 from datetime import datetime
 from flask import Flask, jsonify, request, Response
-from flask_cors import CORS
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.units import mm
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 
 app = Flask(__name__)
-CORS(app)
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
+    response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS"
+    return response
 
 BASE_DIR = os.path.dirname(__file__)
 DATA_DIR = os.path.join(BASE_DIR, "data")
 DT_DIR   = os.path.join(DATA_DIR, "decision_trees")
 SESSIONS_FILE = os.path.join(DATA_DIR, "sessions.json")
+
+OUTCOME_LABEL = {
+    "PASS":           "PASS",
+    "FAIL":           "FAIL",
+    "NOT_APPLICABLE": "Not Applicable",
+    "SKIPPED":        "SKIPPED",
+}
+
+OUTCOME_COLOR = {
+    "PASS":           colors.HexColor("#2ea043"),
+    "FAIL":           colors.HexColor("#da3633"),
+    "NOT_APPLICABLE": colors.HexColor("#8b949e"),
+    "SKIPPED":        colors.HexColor("#8b949e"),
+}
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -41,8 +66,7 @@ def load_device():
     if not data:
         return jsonify({"error": "No data received"}), 400
 
-    required = ["id", "name", "assets"]
-    for field in required:
+    for field in ["id", "name", "assets"]:
         if field not in data:
             return jsonify({"error": f"Required field missing: '{field}'"}), 400
 
@@ -64,10 +88,10 @@ def list_decision_trees():
         if filename.endswith(".json"):
             dt = load_json(os.path.join(DT_DIR, filename))
             trees.append({
-                "id": dt["id"],
-                "name": dt["name"],
+                "id":          dt["id"],
+                "name":        dt["name"],
                 "description": dt.get("description", ""),
-                "standard": dt.get("standard", ""),
+                "standard":    dt.get("standard", ""),
             })
     return jsonify(trees)
 
@@ -84,8 +108,7 @@ def get_decision_tree(dt_id):
 
 @app.route("/api/sessions", methods=["GET"])
 def list_sessions():
-    sessions = load_sessions()
-    return jsonify(list(sessions.values()))
+    return jsonify(list(load_sessions().values()))
 
 
 @app.route("/api/sessions", methods=["POST"])
@@ -94,16 +117,15 @@ def save_session():
     if not data or "device" not in data or "results" not in data:
         return jsonify({"error": "Invalid session data"}), 400
 
-    sessions = load_sessions()
+    sessions   = load_sessions()
     session_id = data.get("session_id") or str(uuid.uuid4())
-    session = {
+    sessions[session_id] = {
         "session_id": session_id,
-        "saved_at": datetime.now().isoformat(),
-        "device": data["device"],
-        "results": data["results"],
-        "completed": data.get("completed", False),
+        "saved_at":   datetime.now().isoformat(),
+        "device":     data["device"],
+        "results":    data["results"],
+        "completed":  data.get("completed", False),
     }
-    sessions[session_id] = session
     save_sessions(sessions)
     return jsonify({"ok": True, "session_id": session_id})
 
@@ -116,7 +138,122 @@ def get_session(session_id):
     return jsonify(sessions[session_id])
 
 
-# ── 4. Downloadable report ────────────────────────────────────────────────────
+# ── 4. PDF report ─────────────────────────────────────────────────────────────
+
+def _build_pdf(s):
+    device  = s["device"]
+    results = s["results"]
+
+    buf    = io.BytesIO()
+    doc    = SimpleDocTemplate(buf, pagesize=A4,
+                               leftMargin=20*mm, rightMargin=20*mm,
+                               topMargin=20*mm, bottomMargin=20*mm)
+    styles = getSampleStyleSheet()
+    W      = A4[0] - 40*mm
+
+    title_style = ParagraphStyle("title", parent=styles["Normal"],
+                                 fontSize=14, fontName="Helvetica-Bold", spaceAfter=4)
+    meta_style  = ParagraphStyle("meta",  parent=styles["Normal"],
+                                 fontSize=9,  fontName="Helvetica", textColor=colors.HexColor("#555555"))
+    section_style = ParagraphStyle("section", parent=styles["Normal"],
+                                   fontSize=10, fontName="Helvetica-Bold", spaceBefore=10, spaceAfter=4)
+    footer_style  = ParagraphStyle("footer", parent=styles["Normal"],
+                                   fontSize=8, fontName="Helvetica",
+                                   textColor=colors.HexColor("#888888"), spaceBefore=14)
+
+    story = []
+
+    # — header —
+    story.append(Paragraph("EN 18031 COMPLIANCE REPORT", title_style))
+    story.append(Paragraph(
+        f"Device: <b>{device.get('name','N/A')}</b> &nbsp;|&nbsp; "
+        f"Model: {device.get('model','N/A')} &nbsp;|&nbsp; "
+        f"OS: {device.get('os','N/A')} &nbsp;|&nbsp; "
+        f"Date: {s['saved_at'][:10]}",
+        meta_style))
+    story.append(Spacer(1, 6*mm))
+
+    # — results by asset —
+    by_asset = {}
+    for r in results:
+        by_asset.setdefault(r.get("asset_id", "unknown"), []).append(r)
+
+    for asset in device.get("assets", []):
+        aid          = asset["id"]
+        asset_results = by_asset.get(aid, [])
+        story.append(Paragraph(
+            f"{asset['name']} <font size='8' color='#888888'>({asset.get('type','').upper()})</font>",
+            section_style))
+
+        if not asset_results:
+            story.append(Paragraph("No evaluations performed.", meta_style))
+            continue
+
+        table_data = [["Requirement", "Outcome", "Answers"]]
+        for r in asset_results:
+            outcome    = r.get("outcome", "?")
+            label      = OUTCOME_LABEL.get(outcome, outcome)
+            col        = OUTCOME_COLOR.get(outcome, colors.black)
+            req_para   = Paragraph(f"<font name='Courier' size='8'>{r.get('requirement_id','?')}</font>",
+                                   styles["Normal"])
+            out_para   = Paragraph(f"<font color='{col.hexval()}'><b>{label}</b></font>",
+                                   styles["Normal"])
+            ans_count  = str(len(r.get("answers", [])) or "—")
+            table_data.append([req_para, out_para, ans_count])
+
+        col_widths = [W * 0.40, W * 0.40, W * 0.20]
+        t = Table(table_data, colWidths=col_widths)
+        t.setStyle(TableStyle([
+            ("FONTNAME",     (0, 0), (-1, 0),  "Helvetica-Bold"),
+            ("FONTSIZE",     (0, 0), (-1, -1), 9),
+            ("TEXTCOLOR",    (0, 0), (-1, 0),  colors.HexColor("#555555")),
+            ("BACKGROUND",   (0, 0), (-1, 0),  colors.HexColor("#f0f0f0")),
+            ("LINEBELOW",    (0, 0), (-1, 0),  0.5, colors.HexColor("#cccccc")),
+            ("LINEBELOW",    (0, 1), (-1, -1), 0.3, colors.HexColor("#e0e0e0")),
+            ("TOPPADDING",   (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING",(0, 0), (-1, -1), 3),
+            ("VALIGN",       (0, 0), (-1, -1), "MIDDLE"),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 4*mm))
+
+    # — summary —
+    outcomes = [r.get("outcome") for r in results]
+    total  = len(outcomes)
+    passed = outcomes.count("PASS")
+    failed = outcomes.count("FAIL")
+    na     = sum(1 for o in outcomes if o in ("NOT_APPLICABLE", "SKIPPED"))
+
+    story.append(Spacer(1, 4*mm))
+    summary_data = [
+        ["Total", "PASS", "FAIL", "N/A"],
+        [str(total),
+         Paragraph(f"<font color='#2ea043'><b>{passed}</b></font>", styles["Normal"]),
+         Paragraph(f"<font color='#da3633'><b>{failed}</b></font>", styles["Normal"]),
+         Paragraph(f"<font color='#8b949e'>{na}</font>",            styles["Normal"])],
+    ]
+    st = Table(summary_data, colWidths=[W*0.25]*4)
+    st.setStyle(TableStyle([
+        ("FONTNAME",     (0, 0), (-1, 0),  "Helvetica-Bold"),
+        ("FONTSIZE",     (0, 0), (-1, -1), 9),
+        ("TEXTCOLOR",    (0, 0), (-1, 0),  colors.HexColor("#555555")),
+        ("BACKGROUND",   (0, 0), (-1, 0),  colors.HexColor("#f0f0f0")),
+        ("LINEBELOW",    (0, 0), (-1, 0),  0.5, colors.HexColor("#cccccc")),
+        ("TOPPADDING",   (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING",(0, 0), (-1, -1), 3),
+        ("ALIGN",        (0, 0), (-1, -1), "CENTER"),
+    ]))
+    story.append(Paragraph("SUMMARY", section_style))
+    story.append(st)
+
+    story.append(Paragraph(
+        "Generated by: EN18031 Compliance PoC — Coderius Group",
+        footer_style))
+
+    doc.build(story)
+    buf.seek(0)
+    return buf
+
 
 @app.route("/api/sessions/<session_id>/report", methods=["GET"])
 def download_report(session_id):
@@ -124,67 +261,14 @@ def download_report(session_id):
     if session_id not in sessions:
         return jsonify({"error": "Session not found"}), 404
 
-    s = sessions[session_id]
-    device = s["device"]
-    results = s["results"]
+    s        = sessions[session_id]
+    device   = s["device"]
+    filename = f"report_{device.get('id','device')}_{s['saved_at'][:10]}.pdf"
 
-    lines = [
-        "=" * 60,
-        "EN 18031 COMPLIANCE REPORT",
-        "=" * 60,
-        f"Device      : {device.get('name', 'N/A')}",
-        f"Model       : {device.get('model', 'N/A')}",
-        f"OS          : {device.get('os', 'N/A')}",
-        f"Date        : {s['saved_at'][:10]}",
-        "=" * 60,
-        "",
-        "RESULTS BY ASSET:",
-        "",
-    ]
-
-    by_asset = {}
-    for r in results:
-        aid = r.get("asset_id", "unknown")
-        by_asset.setdefault(aid, []).append(r)
-
-    for asset in device.get("assets", []):
-        aid = asset["id"]
-        lines.append(f"  Asset: {asset['name']} ({asset.get('type','').upper()})")
-        asset_results = by_asset.get(aid, [])
-        if not asset_results:
-            lines.append("    No evaluations performed.")
-        for r in asset_results:
-            outcome = r.get("outcome", "?")
-            req     = r.get("requirement_id", "?")
-            icon    = {"PASS": "✅", "FAIL": "❌", "NOT_APPLICABLE": "➖"}.get(outcome, "❓")
-            lines.append(f"    {icon} {req}: {outcome}")
-        lines.append("")
-
-    outcomes = [r.get("outcome") for r in results]
-    total    = len(outcomes)
-    passed   = outcomes.count("PASS")
-    failed   = outcomes.count("FAIL")
-    na       = outcomes.count("NOT_APPLICABLE")
-
-    lines += [
-        "=" * 60,
-        "SUMMARY",
-        "=" * 60,
-        f"  Total evaluations  : {total}",
-        f"  ✅ PASS            : {passed}",
-        f"  ❌ FAIL            : {failed}",
-        f"  ➖ NOT APPLICABLE  : {na}",
-        "",
-        "Generated by: EN18031 Compliance PoC — Coderius Group",
-        "=" * 60,
-    ]
-
-    report_text = "\n".join(lines)
-    filename = f"report_{device.get('id','device')}_{s['saved_at'][:10]}.txt"
-
+    pdf_buf = _build_pdf(s)
     return Response(
-        report_text,
-        mimetype="text/plain",
+        pdf_buf,
+        mimetype="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 

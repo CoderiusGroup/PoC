@@ -52,7 +52,7 @@ function DecisionTreeNavigator({ dtId, onDone, onSkip }) {
         {history.length > 0 && (
           <div style={{ marginTop: '.75rem', color: '#8b949e', fontSize: '12px' }}>
             {history.map((h, i) => (
-              <div key={i}>{h.text.length > 70 ? h.text.slice(0, 70) + '…' : h.text} → {h.answer === 'yes' ? 'Yes' : 'No'}</div>
+              <div key={i}>{h.text.length > 100 ? h.text.slice(0, 100) + '…' : h.text} → {h.answer === 'yes' ? 'Yes' : 'No'}</div>
             ))}
           </div>
         )}
