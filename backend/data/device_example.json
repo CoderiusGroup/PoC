@@ -1,0 +1,32 @@
+{
+  "id": "device-001",
+  "name": "Wi-Fi Coffee Machine",
+  "manufacturer": "Bluewind S.r.l.",
+  "model": "CoffeeIoT Pro",
+  "os": "Linux Embedded 5.4",
+  "version": "2.1.0",
+  "description": "Wi-Fi connected coffee machine. It periodically transmits data regarding brewed coffees to monitor the number of capsules used. It supports a local connection for diagnostics.",
+  "assets": [
+    {
+      "id": "asset-001",
+      "name": "MQTT Broker",
+      "type": "software",
+      "description": "Manages communication between internal device services via the MQTT protocol",
+      "requirements": ["AUM-5-1", "ACM-1-1"]
+    },
+    {
+      "id": "asset-002",
+      "name": "Wi-Fi Interface",
+      "type": "hardware",
+      "description": "Wireless module for local network connection and data transmission to the remote server",
+      "requirements": ["AUM-5-1"]
+    },
+    {
+      "id": "asset-003",
+      "name": "Remote Monitoring Server",
+      "type": "software",
+      "description": "Collects data on produced coffees and manages remote monitoring of the device",
+      "requirements": ["ACM-1-1"]
+    }
+  ]
+}
