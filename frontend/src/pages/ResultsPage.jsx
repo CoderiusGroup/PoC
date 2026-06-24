@@ -1,21 +1,36 @@
-const LABEL = { PASS: 'PASS', FAIL: 'FAIL', NOT_APPLICABLE: 'Not Applicable', SKIPPED: 'SKIPPED' }
-const CLS   = { PASS: 'pass', FAIL: 'fail', NOT_APPLICABLE: 'na',  SKIPPED: 'na' }
+const LABEL = { PASS: 'PASS', FAIL: 'FAIL', NOT_APPLICABLE: 'Not Applicable' }
+const CLS   = { PASS: 'pass', FAIL: 'fail', NOT_APPLICABLE: 'na' }
 
-export default function ResultsPage({ device, results, sessionId, onBack }) {
-  const pass    = results.filter(r => r.outcome === 'PASS').length
-  const fail    = results.filter(r => r.outcome === 'FAIL').length
-  const na      = results.filter(r => r.outcome === 'NOT_APPLICABLE' || r.outcome === 'SKIPPED').length
+export default function ResultsPage({ device, results, onBack }) {
+  const pass = results.filter(r => r.outcome === 'PASS').length
+  const fail = results.filter(r => r.outcome === 'FAIL').length
+  const na   = results.filter(r => r.outcome === 'NOT_APPLICABLE').length
+
+  // costruisce il JSON del report e lo scarica nel browser
+  function downloadReport() {
+    const report = {
+      generated_at: new Date().toISOString(),
+      device,
+      results,
+      task_index:      results.length,
+      completed:       true,
+    }
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })
+    )
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `report_${device.id}_${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h1>Results — {device?.name}</h1>
-        <div>
-          {sessionId && (
-            <button onClick={() => window.open(`/api/sessions/${sessionId}/report`, '_blank')}>
-              Download report
-            </button>
-          )}
+        <div style={{ display: 'flex', gap: '.5rem' }}>
+          <button onClick={downloadReport}>Download Report</button>
           <button onClick={onBack}>← Home</button>
         </div>
       </div>
@@ -25,7 +40,7 @@ export default function ResultsPage({ device, results, sessionId, onBack }) {
         {' — '}
         FAIL: <span className="fail">{fail}</span>
         {' — '}
-        N/A: <span className="na">{na}</span>
+        NA: <span className="na">{na}</span>
       </p>
 
       <hr />
@@ -70,8 +85,6 @@ export default function ResultsPage({ device, results, sessionId, onBack }) {
           ))}
         </>
       )}
-
-      {!sessionId && <p className="info" style={{ fontSize: '12px', marginTop: '1rem' }}>Session not saved.</p>}
     </div>
   )
 }

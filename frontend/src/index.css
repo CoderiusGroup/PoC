@@ -22,7 +22,6 @@ button {
   margin-right: .4rem;
 }
 button:hover { background: #30363d; }
-button:disabled { opacity: .4; cursor: not-allowed; }
 
 input[type="file"] { color: #e6edf3; font-family: monospace; font-size: 13px; }
 

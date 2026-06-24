@@ -1,12 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
-function DecisionTreeNavigator({ dtId, onDone, onSkip }) {
+// naviga un singolo albero decisionale domanda per domanda
+function DecisionTreeNavigator({ dtId, onDone, initialCurrentId, initialHistory, onProgressChange }) {
   const [tree, setTree]           = useState(null)
   const [currentId, setCurrentId] = useState(null)
   const [history, setHistory]     = useState([])
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState('')
 
+  // congela i valori iniziali al momento del mount — altrimenti React li aggiornerebbe prima che useEffect li legga
+  const initIdRef   = useRef(initialCurrentId)
+  const initHistRef = useRef(initialHistory)
+
+  // carica l'albero dal backend e posiziona al nodo corretto (radice o punto salvato)
   useEffect(() => {
     setLoading(true)
     setError('')
@@ -15,8 +21,8 @@ function DecisionTreeNavigator({ dtId, onDone, onSkip }) {
       .then(data => {
         if (data.error) { setError(data.error); return }
         setTree(data)
-        setCurrentId(data.root)
-        setHistory([])
+        setCurrentId(initIdRef.current || data.root)
+        setHistory(initHistRef.current || [])
       })
       .catch(() => setError('Unable to load decision tree.'))
       .finally(() => setLoading(false))
@@ -29,15 +35,23 @@ function DecisionTreeNavigator({ dtId, onDone, onSkip }) {
   const node = tree.nodes[currentId]
   if (!node)   return <p className="error">Node not found: {currentId}</p>
 
+  // registra la risposta e avanza al nodo figlio corrispondente
   function answer(choice) {
-    setHistory(h => [...h, { nodeId: currentId, text: node.text, answer: choice }])
-    setCurrentId(choice === 'yes' ? node.yes : node.no)
+    const newHistory   = [...history, { nodeId: currentId, text: node.text, answer: choice }]
+    const newCurrentId = choice === 'yes' ? node.yes : node.no
+    setHistory(newHistory)
+    setCurrentId(newCurrentId)
+    onProgressChange?.(newCurrentId, newHistory)
   }
 
+  // torna al nodo precedente rimuovendo l'ultima risposta dalla history
   function goBack() {
     if (!history.length) return
-    setCurrentId(history[history.length - 1].nodeId)
-    setHistory(h => h.slice(0, -1))
+    const newCurrentId = history[history.length - 1].nodeId
+    const newHistory   = history.slice(0, -1)
+    setCurrentId(newCurrentId)
+    setHistory(newHistory)
+    onProgressChange?.(newCurrentId, newHistory)
   }
 
   if (node.type === 'leaf') {
@@ -49,13 +63,6 @@ function DecisionTreeNavigator({ dtId, onDone, onSkip }) {
         </p>
         <button onClick={goBack}>← Back</button>
         <button onClick={() => onDone(node.outcome, history)}>Save and continue →</button>
-        {history.length > 0 && (
-          <div style={{ marginTop: '.75rem', color: '#8b949e', fontSize: '12px' }}>
-            {history.map((h, i) => (
-              <div key={i}>{h.text.length > 100 ? h.text.slice(0, 100) + '…' : h.text} → {h.answer === 'yes' ? 'Yes' : 'No'}</div>
-            ))}
-          </div>
-        )}
       </div>
     )
   }
@@ -70,27 +77,19 @@ function DecisionTreeNavigator({ dtId, onDone, onSkip }) {
           <button onClick={() => answer('no')}>No</button>
           {history.length > 0 && <button onClick={goBack}>← Back</button>}
         </div>
-        <button onClick={onSkip} style={{ marginRight: 0 }}>Skip</button>
       </div>
-      {history.length > 0 && (
-        <div style={{ marginTop: '1rem', color: '#8b949e', fontSize: '12px', clear: 'both' }}>
-          {history.map((h, i) => (
-            <div key={i}>{h.text.length > 70 ? h.text.slice(0, 70) + '…' : h.text} → {h.answer === 'yes' ? 'Yes' : 'No'}</div>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
 
-export default function EvaluationPage({ device, onComplete, onBack }) {
+export default function EvaluationPage({ device, initialResults = [], initialTaskIndex = 0, initialProgress = null, onComplete, onBack }) {
+  // appiattisce assets e requisiti in una lista ordinata da valutare uno per uno
   const tasks = device.assets.flatMap(asset =>
     (asset.requirements || []).map(req => ({ asset, reqId: req }))
   )
-  const [taskIndex, setTaskIndex] = useState(0)
-  const [results, setResults]     = useState([])
-  const [saving, setSaving]       = useState(false)
-  const [error, setError]         = useState('')
+  const [taskIndex, setTaskIndex]         = useState(initialTaskIndex)
+  const [results, setResults]             = useState(initialResults)
+  const [currentProgress, setCurrentProgress] = useState(initialProgress)
 
   if (tasks.length === 0) {
     return (
@@ -103,6 +102,7 @@ export default function EvaluationPage({ device, onComplete, onBack }) {
 
   const current = tasks[taskIndex]
 
+  // salva il risultato del requisito corrente e passa al successivo (o chiude la valutazione)
   function onTaskDone(outcome, history) {
     const newResult = {
       asset_id:       current.asset.id,
@@ -113,40 +113,30 @@ export default function EvaluationPage({ device, onComplete, onBack }) {
     }
     const updated = [...results, newResult]
     setResults(updated)
-    if (taskIndex + 1 >= tasks.length) finishEvaluation(updated)
+    setCurrentProgress(null)
+    if (taskIndex + 1 >= tasks.length) onComplete(updated)
     else setTaskIndex(i => i + 1)
   }
 
-  function onTaskSkip() {
-    const newResult = {
-      asset_id:       current.asset.id,
-      asset_name:     current.asset.name,
-      requirement_id: current.reqId,
-      outcome:        'SKIPPED',
-      answers:        [],
+  // scarica la sessione come file JSON e torna alla home
+  function saveAndExit() {
+    const session = {
+      saved_at:         new Date().toISOString(),
+      device,
+      results,
+      task_index:       taskIndex,
+      current_progress: currentProgress,
+      completed:        false,
     }
-    const updated = [...results, newResult]
-    setResults(updated)
-    if (taskIndex + 1 >= tasks.length) finishEvaluation(updated)
-    else setTaskIndex(i => i + 1)
-  }
-
-  async function finishEvaluation(finalResults) {
-    setSaving(true)
-    setError('')
-    try {
-      const res = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device, results: finalResults, completed: true }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setError(data.error || 'Save error'); setSaving(false); return }
-      onComplete(finalResults, data.session_id)
-    } catch {
-      setError('Unable to save. Make sure Flask is running.')
-      setSaving(false)
-    }
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' })
+    )
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `session_${device.id}_${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    onBack()
   }
 
   return (
@@ -158,11 +148,11 @@ export default function EvaluationPage({ device, onComplete, onBack }) {
             {taskIndex} / {tasks.length} completed — Asset: {current.asset.name} — {current.reqId}
           </p>
         </div>
-        <button onClick={onBack}>Exit</button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '.4rem' }}>
+          <button onClick={saveAndExit}>Save & Exit</button>
+          <button onClick={onBack}>Exit</button>
+        </div>
       </div>
-
-      {error  && <p className="error">⚠ {error}</p>}
-      {saving && <p className="info">Saving...</p>}
 
       <hr />
 
@@ -170,7 +160,9 @@ export default function EvaluationPage({ device, onComplete, onBack }) {
         key={`${current.asset.id}-${current.reqId}`}
         dtId={current.reqId}
         onDone={onTaskDone}
-        onSkip={onTaskSkip}
+        initialCurrentId={currentProgress?.currentId ?? null}
+        initialHistory={currentProgress?.history ?? []}
+        onProgressChange={(cid, hist) => setCurrentProgress({ currentId: cid, history: hist })}
       />
     </div>
   )

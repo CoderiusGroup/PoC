@@ -4,27 +4,50 @@ import EvaluationPage from './pages/EvaluationPage.jsx'
 import ResultsPage from './pages/ResultsPage.jsx'
 
 export default function App() {
-  const [page, setPage]           = useState('landing')
-  const [device, setDevice]       = useState(null)
-  const [results, setResults]     = useState([])
-  const [sessionId, setSessionId] = useState(null)
+  // stato globale: pagina corrente, device caricato, risultati e punto di ripresa
+  const [page, setPage]                       = useState('landing')
+  const [device, setDevice]                   = useState(null)
+  const [results, setResults]                 = useState([])
+  const [initialTaskIndex, setInitialTaskIndex] = useState(0)
+  const [initialProgress, setInitialProgress] = useState(null)
 
+  // azzera tutto e torna alla home
   function goHome() {
     setPage('landing')
     setDevice(null)
     setResults([])
-    setSessionId(null)
+    setInitialTaskIndex(0)
+    setInitialProgress(null)
   }
 
+  // device validato dal backend, si parte da zero con la valutazione
   function onDeviceLoaded(deviceData) {
     setDevice(deviceData)
     setResults([])
+    setInitialTaskIndex(0)
+    setInitialProgress(null)
     setPage('evaluation')
   }
 
-  function onEvaluationComplete(evalResults, sid) {
+  // sessione salvata: ripristina device, risultati parziali e punto esatto di ripresa
+  function onSessionResumed(deviceData, savedResults, taskIndex, progress) {
+    setDevice(deviceData)
+    setResults(savedResults)
+    setInitialTaskIndex(taskIndex)
+    setInitialProgress(progress || null)
+    setPage('evaluation')
+  }
+
+  // report già completo caricato dalla home: va diretto alla pagina risultati
+  function onSessionCompleted(deviceData, savedResults) {
+    setDevice(deviceData)
+    setResults(savedResults)
+    setPage('results')
+  }
+
+  // tutte le domande completate, passa i risultati alla pagina finale
+  function onEvaluationComplete(evalResults) {
     setResults(evalResults)
-    setSessionId(sid)
     setPage('results')
   }
 
@@ -36,13 +59,24 @@ export default function App() {
       </div>
 
       {page === 'landing' && (
-        <LandingPage onDeviceLoaded={onDeviceLoaded} />
+        <LandingPage
+          onDeviceLoaded={onDeviceLoaded}
+          onSessionResumed={onSessionResumed}
+          onSessionCompleted={onSessionCompleted}
+        />
       )}
       {page === 'evaluation' && device && (
-        <EvaluationPage device={device} onComplete={onEvaluationComplete} onBack={goHome} />
+        <EvaluationPage
+          device={device}
+          initialResults={results}
+          initialTaskIndex={initialTaskIndex}
+          initialProgress={initialProgress}
+          onComplete={onEvaluationComplete}
+          onBack={goHome}
+        />
       )}
       {page === 'results' && (
-        <ResultsPage device={device} results={results} sessionId={sessionId} onBack={goHome} />
+        <ResultsPage device={device} results={results} onBack={goHome} />
       )}
     </div>
   )

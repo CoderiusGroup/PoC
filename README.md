@@ -5,11 +5,11 @@ Proof of Concept per la verifica automatizzata della conformità allo standard E
 
 ## Stack
 
-| Layer    | Tecnologia              |
-|----------|-------------------------|
-| Backend  | Python 3.x + Flask 3    |
-| Frontend | React 18 + Vite 5       |
-| Dati     | File JSON (no database) |
+| Layer    | Tecnologia                             |
+|----------|----------------------------------------|
+| Backend  | Python 3.9.6 + Flask 3.1.3             |
+| Frontend | React 19.2.7 + Vite 8.0.16 + Node.js 26|
+| Dati     | File JSON (no database)                |
 
 ## Avvio rapido
 
@@ -31,11 +31,12 @@ Apri il browser su http://localhost:5173
 
 ## Come si usa
 
-1. Carica il file backend/data/device_esempio.json
-2. Per ogni asset naviga il decision tree rispondendo Si/No
-3. Visualizza il riepilogo PASS/FAIL/NOT APPLICABLE
-4. Clicca Scarica report per ottenere il file .txt
-5. Torna alla home per riprendere sessioni salvate
+1. Carica il file `backend/data/device_example.json` per avviare una nuova valutazione
+2. Per ogni asset naviga il decision tree rispondendo Yes/No
+3. In qualsiasi momento clicca "Save & Exit" per salvare la sessione su file e riprenderla in seguito
+4. A valutazione completata visualizza il riepilogo PASS/FAIL/Not Applicable
+5. Clicca "Download Report" per ottenere il report in formato .json
+6. Per riprendere una sessione salvata, caricala dalla home nella sezione "Resume saved session"
 
 ## Struttura
 
@@ -43,7 +44,7 @@ Apri il browser su http://localhost:5173
       app.py
       pyproject.toml
       data/
-        device_esempio.json
+        device_example.json
         decision_trees/
           AUM-5-1.json
           ACM-1-1.json
@@ -63,11 +64,7 @@ Apri il browser su http://localhost:5173
 | Metodo | Endpoint                    | Descrizione                    |
 |--------|-----------------------------|--------------------------------|
 | POST   | /api/session/load           | Valida e carica un device JSON |
-| GET    | /api/decision-trees         | Lista DT disponibili           |
 | GET    | /api/decision-trees/<id>    | Nodi di un DT specifico        |
-| GET    | /api/sessions               | Lista sessioni salvate         |
-| POST   | /api/sessions               | Salva una sessione             |
-| GET    | /api/sessions/<id>/report   | Scarica report .txt            |
 
 ---
 
