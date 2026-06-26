@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 
+const LABEL = { PASS: 'PASS', FAIL: 'FAIL', NOT_APPLICABLE: 'Not Applicable' }
+const CLS   = { PASS: 'pass', FAIL: 'fail', NOT_APPLICABLE: 'na' }
+
 // naviga un singolo albero decisionale domanda per domanda
 function DecisionTreeNavigator({ dtId, onDone, initialCurrentId, initialHistory, onProgressChange }) {
   const [tree, setTree]           = useState(null)
@@ -54,6 +57,7 @@ function DecisionTreeNavigator({ dtId, onDone, initialCurrentId, initialHistory,
     onProgressChange?.(newCurrentId, newHistory)
   }
 
+  // nodo foglia: mostra il risultato finale e lascia salvare o tornare indietro
   if (node.type === 'leaf') {
     const cls = { PASS: 'pass', FAIL: 'fail', NOT_APPLICABLE: 'na' }[node.outcome] || 'na'
     return (
@@ -71,24 +75,29 @@ function DecisionTreeNavigator({ dtId, onDone, initialCurrentId, initialHistory,
     <div>
       <p style={{ color: '#8b949e', fontSize: '12px', marginBottom: '.5rem' }}>{dtId} › {node.id}</p>
       <p style={{ marginBottom: '1rem' }}>{node.text}</p>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <button onClick={() => answer('yes')}>Yes</button>
-          <button onClick={() => answer('no')}>No</button>
-          {history.length > 0 && <button onClick={goBack}>← Back</button>}
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        <button onClick={() => answer('yes')}>Yes</button>
+        <button onClick={() => answer('no')}>No</button>
+        {history.length > 0 && <button onClick={goBack}>← Back</button>}
       </div>
     </div>
   )
 }
 
-export default function EvaluationPage({ device, initialResults = [], initialTaskIndex = 0, initialProgress = null, onComplete, onBack }) {
-  // appiattisce assets e requisiti in una lista ordinata da valutare uno per uno
+export default function EvaluationPage({ device, initialResults = [], initialProgress = null, onComplete, onBack }) {
+  // appiattisce assets e requisiti in una lista da valutare
   const tasks = device.assets.flatMap(asset =>
-    (asset.requirements || []).map(req => ({ asset, reqId: req }))
+    (asset.requirements || []).map(req => ({ asset, reqId: req, key: `${asset.id}-${req}` }))
   )
-  const [taskIndex, setTaskIndex]         = useState(initialTaskIndex)
-  const [results, setResults]             = useState(initialResults)
+
+  const [results, setResults]           = useState(initialResults)
+  const [selectedTask, setSelectedTask] = useState(() => {
+    // se c'è un checkpoint mid-task salvato, riapre direttamente quel task
+    if (initialProgress?.taskKey) {
+      return tasks.find(t => t.key === initialProgress.taskKey) || null
+    }
+    return null
+  })
   const [currentProgress, setCurrentProgress] = useState(initialProgress)
 
   if (tasks.length === 0) {
@@ -100,22 +109,28 @@ export default function EvaluationPage({ device, initialResults = [], initialTas
     )
   }
 
-  const current = tasks[taskIndex]
+  // trova il risultato salvato per un task specifico
+  function getResult(task) {
+    return results.find(r => r.asset_id === task.asset.id && r.requirement_id === task.reqId)
+  }
 
-  // salva il risultato del requisito corrente e passa al successivo (o chiude la valutazione)
+  // salva il risultato del task corrente (sovrascrive se già valutato) e torna alla lista
   function onTaskDone(outcome, history) {
     const newResult = {
-      asset_id:       current.asset.id,
-      asset_name:     current.asset.name,
-      requirement_id: current.reqId,
+      asset_id:       selectedTask.asset.id,
+      asset_name:     selectedTask.asset.name,
+      requirement_id: selectedTask.reqId,
       outcome,
       answers: history.map(h => ({ question: h.text, answer: h.answer })),
     }
-    const updated = [...results, newResult]
+    // rimuove l'eventuale risultato precedente dello stesso task e aggiunge quello nuovo
+    const updated = [
+      ...results.filter(r => !(r.asset_id === selectedTask.asset.id && r.requirement_id === selectedTask.reqId)),
+      newResult,
+    ]
     setResults(updated)
+    setSelectedTask(null)
     setCurrentProgress(null)
-    if (taskIndex + 1 >= tasks.length) onComplete(updated)
-    else setTaskIndex(i => i + 1)
   }
 
   // scarica la sessione come file JSON e torna alla home
@@ -124,9 +139,7 @@ export default function EvaluationPage({ device, initialResults = [], initialTas
       saved_at:         new Date().toISOString(),
       device,
       results,
-      task_index:       taskIndex,
       current_progress: currentProgress,
-      completed:        false,
     }
     const url = URL.createObjectURL(
       new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' })
@@ -139,30 +152,79 @@ export default function EvaluationPage({ device, initialResults = [], initialTas
     onBack()
   }
 
+  // vista lista task — mostra tutti i requisiti con il loro stato
+  if (!selectedTask) {
+    const allDone = tasks.every(t => getResult(t))
+    return (
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <div>
+            <h1>{device.name}</h1>
+            <p className="info">{results.length} / {tasks.length} completed</p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '.4rem' }}>
+            <button onClick={saveAndExit}>Save & Exit</button>
+            <button onClick={onBack}>Exit</button>
+          </div>
+        </div>
+
+        <hr />
+
+        <table>
+          <thead>
+            <tr><th>Asset</th><th>Requirement</th><th>Outcome</th></tr>
+          </thead>
+          <tbody>
+            {tasks.map(task => {
+              const result = getResult(task)
+              return (
+                <tr key={task.key} onClick={() => setSelectedTask(task)} style={{ cursor: 'pointer' }}>
+                  <td>{task.asset.name}</td>
+                  <td><code>{task.reqId}</code></td>
+                  <td>
+                    {result
+                      ? <span className={CLS[result.outcome] || ''}>{LABEL[result.outcome] || result.outcome}</span>
+                      : <span style={{ color: '#8b949e' }}>pending</span>
+                    }
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+
+        {allDone && (
+          <div style={{ marginTop: '1.5rem' }}>
+            <button onClick={() => onComplete(results)}>View Results →</button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // vista navigatore — valuta il task selezionato
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
         <div>
           <h1>{device.name}</h1>
-          <p className="info">
-            {taskIndex} / {tasks.length} completed — Asset: {current.asset.name} — {current.reqId}
-          </p>
+          <p className="info">Asset: {selectedTask.asset.name} — {selectedTask.reqId}</p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '.4rem' }}>
           <button onClick={saveAndExit}>Save & Exit</button>
-          <button onClick={onBack}>Exit</button>
+          <button onClick={() => { setSelectedTask(null); setCurrentProgress(null) }}>← Task list</button>
         </div>
       </div>
 
       <hr />
 
       <DecisionTreeNavigator
-        key={`${current.asset.id}-${current.reqId}`}
-        dtId={current.reqId}
+        key={selectedTask.key}
+        dtId={selectedTask.reqId}
         onDone={onTaskDone}
-        initialCurrentId={currentProgress?.currentId ?? null}
-        initialHistory={currentProgress?.history ?? []}
-        onProgressChange={(cid, hist) => setCurrentProgress({ currentId: cid, history: hist })}
+        initialCurrentId={currentProgress?.taskKey === selectedTask.key ? currentProgress.currentId : null}
+        initialHistory={currentProgress?.taskKey === selectedTask.key ? currentProgress.history ?? [] : []}
+        onProgressChange={(cid, hist) => setCurrentProgress({ taskKey: selectedTask.key, currentId: cid, history: hist })}
       />
     </div>
   )

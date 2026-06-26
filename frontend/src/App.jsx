@@ -8,7 +8,6 @@ export default function App() {
   const [page, setPage]                       = useState('landing')
   const [device, setDevice]                   = useState(null)
   const [results, setResults]                 = useState([])
-  const [initialTaskIndex, setInitialTaskIndex] = useState(0)
   const [initialProgress, setInitialProgress] = useState(null)
 
   // azzera tutto e torna alla home
@@ -16,7 +15,6 @@ export default function App() {
     setPage('landing')
     setDevice(null)
     setResults([])
-    setInitialTaskIndex(0)
     setInitialProgress(null)
   }
 
@@ -24,16 +22,14 @@ export default function App() {
   function onDeviceLoaded(deviceData) {
     setDevice(deviceData)
     setResults([])
-    setInitialTaskIndex(0)
     setInitialProgress(null)
     setPage('evaluation')
   }
 
   // sessione salvata: ripristina device, risultati parziali e punto esatto di ripresa
-  function onSessionResumed(deviceData, savedResults, taskIndex, progress) {
+  function onSessionResumed(deviceData, savedResults, progress) {
     setDevice(deviceData)
     setResults(savedResults)
-    setInitialTaskIndex(taskIndex)
     setInitialProgress(progress || null)
     setPage('evaluation')
   }
@@ -61,7 +57,6 @@ export default function App() {
         <EvaluationPage
           device={device}
           initialResults={results}
-          initialTaskIndex={initialTaskIndex}
           initialProgress={initialProgress}
           onComplete={onEvaluationComplete}
           onBack={goHome}

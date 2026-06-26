@@ -34,11 +34,11 @@ export default function LandingPage({ onDeviceLoaded, onSessionResumed }) {
     setError('')
     try {
       const json = JSON.parse(await file.text())
-      if (!json.device || json.task_index === undefined) {
+      if (!json.device || !json.saved_at) {
         setError('Invalid session file.')
         return
       }
-      onSessionResumed(json.device, json.results, json.task_index, json.current_progress || null)
+      onSessionResumed(json.device, json.results || [], json.current_progress || null)
     } catch {
       setError('Unable to read session file.')
     }

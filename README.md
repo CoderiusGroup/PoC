@@ -32,7 +32,7 @@ Apri il browser su http://localhost:5173
 ## Come si usa
 
 1. Carica il file `backend/data/device_example.json` per avviare una nuova valutazione
-2. Per ogni asset naviga il decision tree rispondendo Yes/No
+2. Seleziona un requisito dalla lista e naviga il decision tree rispondendo Yes/No
 3. In qualsiasi momento clicca "Save & Exit" per salvare la sessione su file e riprenderla in seguito
 4. A valutazione completata visualizza il riepilogo PASS/FAIL/Not Applicable
 5. Clicca "Download Report" per ottenere il report in formato .json
