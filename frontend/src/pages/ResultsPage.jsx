@@ -12,8 +12,6 @@ export default function ResultsPage({ device, results, onBack }) {
       generated_at: new Date().toISOString(),
       device,
       results,
-      task_index:      results.length,
-      completed:       true,
     }
     const url = URL.createObjectURL(
       new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })

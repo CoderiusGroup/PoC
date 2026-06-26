@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function LandingPage({ onDeviceLoaded, onSessionResumed, onSessionCompleted }) {
+export default function LandingPage({ onDeviceLoaded, onSessionResumed }) {
   const [error, setError]     = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -38,11 +38,7 @@ export default function LandingPage({ onDeviceLoaded, onSessionResumed, onSessio
         setError('Invalid session file.')
         return
       }
-      if (json.completed) {
-        onSessionCompleted(json.device, json.results)
-      } else {
-        onSessionResumed(json.device, json.results, json.task_index, json.current_progress || null)
-      }
+      onSessionResumed(json.device, json.results, json.task_index, json.current_progress || null)
     } catch {
       setError('Unable to read session file.')
     }

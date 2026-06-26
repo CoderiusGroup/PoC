@@ -38,13 +38,6 @@ export default function App() {
     setPage('evaluation')
   }
 
-  // report già completo caricato dalla home: va diretto alla pagina risultati
-  function onSessionCompleted(deviceData, savedResults) {
-    setDevice(deviceData)
-    setResults(savedResults)
-    setPage('results')
-  }
-
   // tutte le domande completate, passa i risultati alla pagina finale
   function onEvaluationComplete(evalResults) {
     setResults(evalResults)
@@ -62,7 +55,6 @@ export default function App() {
         <LandingPage
           onDeviceLoaded={onDeviceLoaded}
           onSessionResumed={onSessionResumed}
-          onSessionCompleted={onSessionCompleted}
         />
       )}
       {page === 'evaluation' && device && (
