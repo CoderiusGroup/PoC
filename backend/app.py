@@ -1,8 +1,10 @@
 import json
 import os
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 
-app = Flask(__name__)
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+
+app = Flask(__name__, static_folder=STATIC_DIR, static_url_path="")
 
 @app.after_request
 def add_cors_headers(response):
@@ -59,7 +61,17 @@ def get_decision_tree(dt_id):
     return jsonify(load_json(path))
 
 
+# ── 3. Serve frontend (production build) ─────────────────────────────────────
+
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_frontend(path):
+    if path and os.path.exists(os.path.join(STATIC_DIR, path)):
+        return send_from_directory(STATIC_DIR, path)
+    return send_from_directory(STATIC_DIR, "index.html")
+
+
 # ── startup ───────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(host="0.0.0.0", port=8080)

@@ -7,17 +7,24 @@ Proof of Concept per la verifica automatizzata della conformità allo standard E
 
 | Layer    | Tecnologia                             |
 |----------|----------------------------------------|
-| Backend  | Python 3.9.6 + Flask 3.1.3             |
-| Frontend | React 19.2.7 + Vite 8.0.16 + Node.js 26|
+| Backend  | Python 3.12 + Flask 3.x               |
+| Frontend | React 19 + Vite 8 + Node.js 22        |
 | Dati     | File JSON (no database)                |
 
-## Avvio rapido
+## Avvio con Docker
+
+    docker build -t en18031-poc .
+    docker run -p 8080:8080 en18031-poc
+
+Apri il browser su http://localhost:8080
+
+## Avvio locale (sviluppo)
 
 ### Backend
 
     cd backend
-    pip3 install flask flask-cors
-    python3 app.py
+    pip install flask
+    python app.py
 
 ### Frontend
 
@@ -28,6 +35,7 @@ In un secondo terminale:
     npm run dev
 
 Apri il browser su http://localhost:5173
+(il proxy Vite inoltra le chiamate API a http://localhost:8080)
 
 ## Come si usa
 
@@ -69,4 +77,3 @@ Apri il browser su http://localhost:5173
 ---
 
 Coderius Group — Università degli Studi di Padova — A.A. 2025/2026
-
